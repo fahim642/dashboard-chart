@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Data Dashboard</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Load Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Custom select styling */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1em;
+            padding-right: 2rem !important;
+        }
+
+        /* Fullscreen Chart Classes */
+        .chart-fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 9999 !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            max-width: none !important;
+        }
+        .chart-fullscreen .chart-container {
+            height: auto !important;
+            flex-grow: 1 !important;
+            min-height: 0;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div class="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Student Data Dashboard</h1>
+                <p class="text-slate-500 mt-1 text-sm sm:text-base">Upload your Excel file to generate insights with independent filters.</p>
+            </div>
+            
+            <div class="shrink-0 w-full md:w-auto">
+                <label class="block cursor-pointer">
+                    <span class="sr-only">Choose Excel file</span>
+                    <input type="file" id="excel-file" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2.5 file:px-4
+                        file:rounded-xl file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-indigo-50 file:text-indigo-700
+                        hover:file:bg-indigo-100 cursor-pointer transition-colors shadow-sm"
+                    />
+                </label>
+            </div>
+        </div>
+
+        <!-- Error/Message Box -->
+        <div id="message-box" class="hidden mb-6 p-4 rounded-xl border" role="alert">
+            <p id="message-text" class="text-sm font-medium"></p>
+        </div>
+
+        <!-- Initial State Notice -->
+        <div id="empty-state" class="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl border border-slate-200 shadow-sm border-dashed">
+            <div class="p-4 bg-indigo-50 rounded-full mb-4">
+                <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            </div>
+            <h3 class="text-lg font-semibold text-slate-700">No data loaded yet</h3>
+            <p class="text-slate-500 max-w-sm mt-1 text-sm">Please select your Excel data file using the button above to generate the charts.</p>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div id="dashboard-grid" class="hidden grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 fade-in">
+            
+            <!-- Chart 1 -->
+            <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col transition-all duration-300">
+                <div class="mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <h2 class="text-lg font-bold text-slate-800">Students per MRSM</h2>
+                        <button type="button" class="text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
+                            <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
+                            <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="chart1-state" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="1"></select>
+                        <select id="chart1-school" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="1"></select>
+                        <select id="chart1-form" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="1"></select>
+                    </div>
+                </div>
+                <div class="chart-container mt-auto"><canvas id="canvas-chart1"></canvas></div>
+            </div>
+
+            <!-- Chart 2 -->
+            <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col transition-all duration-300">
+                <div class="mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <h2 class="text-lg font-bold text-slate-800">Distribution by Form</h2>
+                        <button type="button" class="text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
+                            <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
+                            <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="chart2-state" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="2"></select>
+                        <select id="chart2-school" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="2"></select>
+                        <select id="chart2-form" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="2"></select>
+                    </div>
+                </div>
+                <div class="chart-container mt-auto"><canvas id="canvas-chart2"></canvas></div>
+            </div>
+
+            <!-- Chart 3 -->
+            <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col transition-all duration-300">
+                <div class="mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <h2 class="text-lg font-bold text-slate-800">Assessment Progress</h2>
+                        <button type="button" class="text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
+                            <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
+                            <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="chart3-state" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                        <select id="chart3-school" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                        <select id="chart3-form" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                    </div>
+                </div>
+                <div class="chart-container mt-auto"><canvas id="canvas-chart3"></canvas></div>
+            </div>
+
+            <!-- Chart 4 (Stacked) -->
+            <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col lg:col-span-2 xl:col-span-2 transition-all duration-300">
+                <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h2 class="text-lg font-bold text-slate-800">Assessment Status by School</h2>
+                    <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
+                        <select id="chart4-state" class="filter-select flex-1 sm:w-32 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <select id="chart4-school" class="filter-select flex-1 sm:w-40 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <select id="chart4-form" class="filter-select flex-1 sm:w-28 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <button type="button" class="ml-1 text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
+                            <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
+                            <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-container mt-auto"><canvas id="canvas-chart4"></canvas></div>
+            </div>
+
+            <!-- Chart 6 (Active/Inactive) -->
+            <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col transition-all duration-300">
+                <div class="mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <h2 class="text-lg font-bold text-slate-800">Active vs Inactive Users</h2>
+                        <button type="button" class="text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
+                            <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
+                            <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="chart6-state" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="6"></select>
+                        <select id="chart6-school" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="6"></select>
+                        <select id="chart6-form" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="6"></select>
+                    </div>
+                </div>
+                <div class="chart-container mt-auto"><canvas id="canvas-chart6"></canvas></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Global State
+        let globalData = [];
+        let uniqueStates = [];
+        let uniqueSchools = [];
+        let uniqueForms = [];
+        
+        // Dictionary to store chart instances for targeted updates
+        const chartInstances = {};
+
+        // Color palettes
+        const colors = [
+			'rgba(220, 38, 38, 0.85)',   // Red
+			'rgba(13, 148, 136, 0.85)',  // Teal
+			'rgba(202, 138, 4, 0.85)',   // Yellow-Gold
+			'rgba(192, 38, 211, 0.85)',  // Fuchsia
+			'rgba(37, 99, 235, 0.85)',   // Blue
+			'rgba(101, 163, 13, 0.85)',  // Lime
+			'rgba(234, 88, 12, 0.85)',    // Orange
+            'rgba(99, 102, 241, 0.85)',  // Indigo
+			'rgba(16, 185, 129, 0.85)',  // Emerald
+			'rgba(245, 158, 11, 0.85)',  // Amber
+			'rgba(236, 72, 153, 0.85)',  // Pink
+			'rgba(14, 165, 233, 0.85)',  // Sky
+			'rgba(139, 92, 246, 0.85)',  // Violet
+			'rgba(244, 63, 94, 0.85)'   // Rose
+        ];
+        const borderColors = colors.map(c => c.replace('0.85', '1'));
+
+        // Set global Chart.js defaults
+        Chart.defaults.font.family = 'Inter, sans-serif';
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.scale.grid.color = '#f1f5f9';
+
+        // Message Box utility
+        function showMessage(msg, type = 'error') {
+            const box = document.getElementById('message-box');
+            const text = document.getElementById('message-text');
+            box.classList.remove('hidden', 'bg-red-50', 'border-red-200', 'text-red-700', 'bg-yellow-50', 'border-yellow-200', 'text-yellow-700');
+            
+            if (type === 'error') box.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
+            else box.classList.add('bg-yellow-50', 'border-yellow-200', 'text-yellow-700');
+            
+            text.textContent = msg;
+        }
+
+        function hideMessage() {
+            document.getElementById('message-box').classList.add('hidden');
+        }
+
+        // Fullscreen Toggle Logic
+        function toggleFullscreen(cardElement) {
+            cardElement.classList.toggle('chart-fullscreen');
+            
+            const expandIcon = cardElement.querySelector('.expand-icon');
+            const collapseIcon = cardElement.querySelector('.collapse-icon');
+            
+            if (cardElement.classList.contains('chart-fullscreen')) {
+                expandIcon.classList.add('hidden');
+                collapseIcon.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                expandIcon.classList.remove('hidden');
+                collapseIcon.classList.add('hidden');
+                document.body.style.overflow = ''; 
+            }
+        }
+
+        document.getElementById('excel-file').addEventListener('change', handleFile);
+
+        function handleFile(e) {
+            hideMessage();
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convert sheet to JSON array
+                    const rawData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+                    
+                    if (!rawData || rawData.length === 0) {
+                        showMessage("The uploaded Excel file appears to be empty.");
+                        return;
+                    }
+
+                    // Save to global state
+                    globalData = rawData;
+                    
+                    // Extract unique values for filters
+                    uniqueStates = [...new Set(globalData.map(d => d.State).filter(Boolean))].sort();
+                    uniqueSchools = [...new Set(globalData.map(d => d.MRSM).filter(Boolean))].sort();
+                    uniqueForms = [...new Set(globalData.map(d => String(d.Form)).filter(Boolean))].sort();
+
+                    // Switch UI
+                    document.getElementById('empty-state').style.display = 'none';
+                    const grid = document.getElementById('dashboard-grid');
+                    grid.classList.remove('hidden');
+                    grid.classList.add('grid');
+                    
+                    // Initialize dashboards
+                    initializeDropdowns();
+                    renderAllCharts();
+                    
+                } catch (error) {
+                    showMessage("Error parsing the file. Please ensure it's a valid Excel format.", "error");
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function initializeDropdowns() {
+            const selects = document.querySelectorAll('.filter-select');
+            selects.forEach(select => {
+                select.innerHTML = ''; // clear existing
+                
+                const type = select.id.split('-')[1]; 
+                
+                let defaultText = '';
+                let dataList = [];
+
+                if (type === 'state') {
+                    defaultText = 'All States';
+                    dataList = uniqueStates;
+                } else if (type === 'school') {
+                    defaultText = 'All Schools';
+                    dataList = uniqueSchools;
+                } else if (type === 'form') {
+                    defaultText = 'All Forms';
+                    dataList = uniqueForms;
+                }
+
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'ALL';
+                defaultOption.textContent = defaultText;
+                select.appendChild(defaultOption);
+
+                dataList.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    select.appendChild(option);
+                });
+
+                select.removeEventListener('change', handleFilterChange); 
+                select.addEventListener('change', handleFilterChange);
+            });
+        }
+
+        function handleFilterChange(e) {
+            const chartId = e.target.getAttribute('data-chart');
+            const type = e.target.id.split('-')[1];
+
+            // Cascading Logic: Update the School dropdown based on selected State
+            if (type === 'state') {
+                const selectedState = e.target.value;
+                const schoolSelect = document.getElementById(`chart${chartId}-school`);
+                const currentSchoolVal = schoolSelect.value;
+                
+                // Get schools belonging only to the selected state (or all if ALL is selected)
+                let availableSchools = [];
+                if (selectedState === 'ALL') {
+                    availableSchools = uniqueSchools;
+                } else {
+                    const stateFilteredData = globalData.filter(row => row.State === selectedState);
+                    availableSchools = [...new Set(stateFilteredData.map(d => d.MRSM).filter(Boolean))].sort();
+                }
+
+                // Clear and rebuild school dropdown
+                schoolSelect.innerHTML = '';
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'ALL';
+                defaultOption.textContent = 'All Schools';
+                schoolSelect.appendChild(defaultOption);
+
+                availableSchools.forEach(school => {
+                    const option = document.createElement('option');
+                    option.value = school;
+                    option.textContent = school;
+                    schoolSelect.appendChild(option);
+                });
+
+                // Restore previous selection if it's still a valid school in this state
+                if (availableSchools.includes(currentSchoolVal)) {
+                    schoolSelect.value = currentSchoolVal;
+                }
+            }
+
+            updateChart(chartId);
+        }
+
+        function getFilteredData(chartId) {
+            const stateVal = document.getElementById(`chart${chartId}-state`).value;
+            const schoolVal = document.getElementById(`chart${chartId}-school`).value;
+            const formVal = document.getElementById(`chart${chartId}-form`).value;
+
+            return globalData.filter(row => {
+                const matchState = stateVal === 'ALL' || row.State === stateVal;
+                const matchSchool = schoolVal === 'ALL' || row.MRSM === schoolVal;
+                const matchForm = formVal === 'ALL' || String(row.Form) === formVal;
+                
+                return matchState && matchSchool && matchForm;
+            });
+        }
+
+        function aggregateCount(data, key) {
+            const counts = {};
+            data.forEach(row => {
+                const val = row[key] || 'Unknown';
+                counts[val] = (counts[val] || 0) + 1;
+            });
+            const labels = Object.keys(counts).sort(); 
+            const values = labels.map(label => counts[label]);
+            return { labels, values };
+        }
+
+        function renderAllCharts() {
+            ['1', '2', '3', '4', '6'].forEach(id => {
+                updateChart(id);
+            });
+        }
+
+        function updateChart(chartId) {
+            const data = getFilteredData(chartId);
+            const canvasId = `canvas-chart${chartId}`;
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            if (chartInstances[chartId]) {
+                chartInstances[chartId].destroy();
+            }
+
+            switch(chartId) {
+                case '1': renderChart1(ctx, data, chartId); break;
+                case '2': renderChart2(ctx, data, chartId); break;
+                case '3': renderChart3(ctx, data, chartId); break;
+                case '4': renderChart4(ctx, data, chartId); break;
+                case '6': renderChart6(ctx, data, chartId); break;
+            }
+        }
+
+        function renderChart1(ctx, data, id) {
+            const agg = aggregateCount(data, 'MRSM');
+            chartInstances[id] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: agg.labels,
+                    datasets: [{
+                        label: 'Students',
+                        data: agg.values,
+                        backgroundColor: colors[0],
+                        borderColor: borderColors[0],
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function renderChart2(ctx, data, id) {
+            const agg = aggregateCount(data, 'Form');
+            chartInstances[id] = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: agg.labels,
+                    datasets: [{
+                        data: agg.values,
+                        backgroundColor: colors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        function renderChart3(ctx, data, id) {
+            const agg = aggregateCount(data, 'Assessment');
+            chartInstances[id] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: agg.labels,
+                    datasets: [{
+                        label: 'Students',
+                        data: agg.values,
+                        backgroundColor: colors[1],
+                        borderColor: borderColors[1],
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function renderChart4(ctx, data, id) {
+            const schools = [...new Set(data.map(d => d.MRSM || 'Unknown'))].sort();
+            const allAssessments = [...new Set(globalData.map(d => d.Assessment || 'Unknown'))].sort();
+            
+            const datasets = allAssessments.map((assessment, index) => {
+                const values = schools.map(school => {
+                    return data.filter(d => (d.MRSM || 'Unknown') === school && (d.Assessment || 'Unknown') === assessment).length;
+                });
+                return {
+                    label: assessment,
+                    backgroundColor: colors[index % colors.length],
+                    data: values
+                };
+            });
+
+            chartInstances[id] = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: schools, datasets: datasets },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true } },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function renderChart6(ctx, data, id) {
+            let activeCount = 0;
+            let inactiveCount = 0;
+            
+            data.forEach(row => {
+                const lastLogin = row['Last Login'];
+                if (lastLogin && String(lastLogin).trim() !== '') {
+                    activeCount++;
+                } else {
+                    inactiveCount++;
+                }
+            });
+
+            chartInstances[id] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Inactive'],
+                    datasets: [{
+                        data: [activeCount, inactiveCount],
+                        backgroundColor: [colors[1], colors[0]], 
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '65%'
+                }
+            });
+        }
+    </script>
+</body>
+</html>
