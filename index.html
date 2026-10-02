@@ -56,7 +56,7 @@
     <div class="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         <!-- Header -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Student Data Dashboard</h1>
                 <p class="text-slate-500 mt-1 text-sm sm:text-base">Upload your Excel file to generate insights with independent filters.</p>
@@ -79,6 +79,21 @@
         <!-- Error/Message Box -->
         <div id="message-box" class="hidden mb-6 p-4 rounded-xl border" role="alert">
             <p id="message-text" class="text-sm font-medium"></p>
+        </div>
+
+        <!-- Global Filters (Hidden initially) -->
+        <div id="global-filters" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6 fade-in">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Global Filters</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Applies to all charts below</p>
+                </div>
+                <div class="flex flex-wrap gap-3 w-full sm:w-auto">
+                    <select id="global-state" class="global-select flex-1 sm:w-32 bg-slate-50 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 shadow-sm"></select>
+                    <select id="global-school" class="global-select flex-1 sm:w-48 bg-slate-50 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 shadow-sm"></select>
+                    <select id="global-form" class="global-select flex-1 sm:w-32 bg-slate-50 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 shadow-sm"></select>
+                </div>
+            </div>
         </div>
 
         <!-- Initial State Notice -->
@@ -135,16 +150,20 @@
             <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col transition-all duration-300">
                 <div class="mb-4">
                     <div class="flex justify-between items-start mb-3">
-                        <h2 class="text-lg font-bold text-slate-800">Assessment Progress</h2>
+                        <h2 id="chart3-title" class="text-lg font-bold text-slate-800">Assessment Progress (%)</h2>
                         <button type="button" class="text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
                             <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
                             <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
                         </button>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <select id="chart3-state" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
-                        <select id="chart3-school" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
-                        <select id="chart3-form" class="filter-select flex-1 min-w-[80px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                        <select id="chart3-state" class="filter-select flex-1 min-w-[60px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                        <select id="chart3-school" class="filter-select flex-1 min-w-[70px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                        <select id="chart3-form" class="filter-select flex-1 min-w-[60px] bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="3"></select>
+                        
+                        <button type="button" id="chart3-metric-btn" onclick="toggleMetric('3')" class="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors shadow-sm whitespace-nowrap">
+                            Show Count
+                        </button>
                     </div>
                 </div>
                 <div class="chart-container mt-auto"><canvas id="canvas-chart3"></canvas></div>
@@ -153,11 +172,21 @@
             <!-- Chart 4 (Stacked) -->
             <div class="chart-card bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col lg:col-span-2 xl:col-span-2 transition-all duration-300">
                 <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h2 class="text-lg font-bold text-slate-800">Assessment Status by School</h2>
+                    <h2 id="chart4-title" class="text-lg font-bold text-slate-800">Assessment Status by School (%)</h2>
                     <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
-                        <select id="chart4-state" class="filter-select flex-1 sm:w-32 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
-                        <select id="chart4-school" class="filter-select flex-1 sm:w-40 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
-                        <select id="chart4-form" class="filter-select flex-1 sm:w-28 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <select id="chart4-state" class="filter-select flex-1 sm:w-28 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <select id="chart4-school" class="filter-select flex-1 sm:w-32 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <select id="chart4-form" class="filter-select flex-1 sm:w-24 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        <select id="chart4-assessment" class="filter-select flex-1 sm:w-32 bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" data-chart="4"></select>
+                        
+                        <button type="button" id="chart4-metric-btn" onclick="toggleMetric('4')" class="px-2 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors shadow-sm whitespace-nowrap">
+                            Show Count
+                        </button>
+
+                        <button type="button" id="chart4-top5-btn" onclick="toggleTop5Chart4()" class="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors shadow-sm">
+                            Top 5
+                        </button>
+
                         <button type="button" class="ml-1 text-slate-400 hover:text-indigo-600 focus:outline-none transition-colors" onclick="toggleFullscreen(this.closest('.chart-card'))" title="Toggle Fullscreen">
                             <svg class="w-5 h-5 expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4M4 4l5 5M20 8V4h-4m4 0l-5 5M4 16v4h4m-4 0l5-5M20 16v4h-4m4 0l-5-5" /></svg>
                             <svg class="w-5 h-5 collapse-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h4v4M4 14l5 5M20 14h-4v4m4-4l-5 5M4 10h4V6m-4 4l5-5M20 10h-4V6m4 4l-5-5" /></svg>
@@ -195,26 +224,34 @@
         let uniqueStates = [];
         let uniqueSchools = [];
         let uniqueForms = [];
+        let uniqueAssessments = [];
+        
+        // Chart specific states
+        let isChart4Top5 = false;
+        let chartMetrics = {
+            '3': 'percentage', // 'percentage' or 'count'
+            '4': 'percentage'
+        };
         
         // Dictionary to store chart instances for targeted updates
         const chartInstances = {};
 
         // Color palettes
         const colors = [			
-			'rgba(37, 99, 235, 0.85)',   // Blue
-			'rgba(13, 148, 136, 0.85)',  // Teal
-			'rgba(202, 138, 4, 0.85)',   // Yellow-Gold
-			'rgba(192, 38, 211, 0.85)',  // Fuchsia
-			'rgba(220, 38, 38, 0.85)',   // Red
-			'rgba(101, 163, 13, 0.85)',  // Lime
-			'rgba(234, 88, 12, 0.85)',   // Orange
+            'rgba(37, 99, 235, 0.85)',   // Blue
+            'rgba(13, 148, 136, 0.85)',  // Teal
+            'rgba(202, 138, 4, 0.85)',   // Yellow-Gold
+            'rgba(192, 38, 211, 0.85)',  // Fuchsia
+            'rgba(220, 38, 38, 0.85)',   // Red
+            'rgba(101, 163, 13, 0.85)',  // Lime
+            'rgba(234, 88, 12, 0.85)',   // Orange
             'rgba(99, 102, 241, 0.85)',  // Indigo
-			'rgba(16, 185, 129, 0.85)',  // Emerald
-			'rgba(245, 158, 11, 0.85)',  // Amber
-			'rgba(236, 72, 153, 0.85)',  // Pink
-			'rgba(14, 165, 233, 0.85)',  // Sky
-			'rgba(139, 92, 246, 0.85)',  // Violet
-			'rgba(244, 63, 94, 0.85)'   // Rose
+            'rgba(16, 185, 129, 0.85)',  // Emerald
+            'rgba(245, 158, 11, 0.85)',  // Amber
+            'rgba(236, 72, 153, 0.85)',  // Pink
+            'rgba(14, 165, 233, 0.85)',  // Sky
+            'rgba(139, 92, 246, 0.85)',  // Violet
+            'rgba(244, 63, 94, 0.85)'    // Rose
         ];
         const borderColors = colors.map(c => c.replace('0.85', '1'));
 
@@ -257,6 +294,36 @@
             }
         }
 
+        // Toggle Percent / Count Metric
+        function toggleMetric(chartId) {
+            chartMetrics[chartId] = chartMetrics[chartId] === 'percentage' ? 'count' : 'percentage';
+            const btn = document.getElementById(`chart${chartId}-metric-btn`);
+            
+            if (chartMetrics[chartId] === 'percentage') {
+                btn.textContent = 'Show Count';
+            } else {
+                btn.textContent = 'Show %';
+            }
+            
+            updateChart(chartId);
+        }
+
+        // Toggle Top 5 for Chart 4
+        function toggleTop5Chart4() {
+            isChart4Top5 = !isChart4Top5;
+            const btn = document.getElementById('chart4-top5-btn');
+            
+            if (isChart4Top5) {
+                btn.classList.remove('bg-slate-100', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-200');
+                btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600', 'hover:bg-indigo-700');
+            } else {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'hover:bg-indigo-700');
+                btn.classList.add('bg-slate-100', 'text-slate-700', 'border-slate-200', 'hover:bg-slate-200');
+            }
+            
+            updateChart('4');
+        }
+
         document.getElementById('excel-file').addEventListener('change', handleFile);
 
         function handleFile(e) {
@@ -287,9 +354,11 @@
                     uniqueStates = [...new Set(globalData.map(d => d.State).filter(Boolean))].sort();
                     uniqueSchools = [...new Set(globalData.map(d => d.MRSM).filter(Boolean))].sort();
                     uniqueForms = [...new Set(globalData.map(d => String(d.Form)).filter(Boolean))].sort();
+                    uniqueAssessments = [...new Set(globalData.map(d => d.Assessment).filter(Boolean))].sort();
 
                     // Switch UI
                     document.getElementById('empty-state').style.display = 'none';
+                    document.getElementById('global-filters').classList.remove('hidden');
                     const grid = document.getElementById('dashboard-grid');
                     grid.classList.remove('hidden');
                     grid.classList.add('grid');
@@ -306,55 +375,58 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function initializeDropdowns() {
-            const selects = document.querySelectorAll('.filter-select');
-            selects.forEach(select => {
-                select.innerHTML = ''; // clear existing
-                
-                const type = select.id.split('-')[1]; 
-                
-                let defaultText = '';
-                let dataList = [];
+        function populateSelectOptions(selectElement, optionsList, defaultText) {
+            selectElement.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = 'ALL';
+            defaultOption.textContent = defaultText;
+            selectElement.appendChild(defaultOption);
 
-                if (type === 'state') {
-                    defaultText = 'All States';
-                    dataList = uniqueStates;
-                } else if (type === 'school') {
-                    defaultText = 'All Schools';
-                    dataList = uniqueSchools;
-                } else if (type === 'form') {
-                    defaultText = 'All Forms';
-                    dataList = uniqueForms;
-                }
-
-                const defaultOption = document.createElement('option');
-                defaultOption.value = 'ALL';
-                defaultOption.textContent = defaultText;
-                select.appendChild(defaultOption);
-
-                dataList.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item;
-                    option.textContent = item;
-                    select.appendChild(option);
-                });
-
-                select.removeEventListener('change', handleFilterChange); 
-                select.addEventListener('change', handleFilterChange);
+            optionsList.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item;
+                option.textContent = item;
+                selectElement.appendChild(option);
             });
         }
 
-        function handleFilterChange(e) {
-            const chartId = e.target.getAttribute('data-chart');
+        function initializeDropdowns() {
+            // Global Filters
+            const globalSelects = document.querySelectorAll('.global-select');
+            globalSelects.forEach(select => {
+                const type = select.id.split('-')[1];
+                if (type === 'state') populateSelectOptions(select, uniqueStates, 'All States (Global)');
+                else if (type === 'school') populateSelectOptions(select, uniqueSchools, 'All Schools (Global)');
+                else if (type === 'form') populateSelectOptions(select, uniqueForms, 'All Forms (Global)');
+                
+                select.removeEventListener('change', handleGlobalFilterChange);
+                select.addEventListener('change', handleGlobalFilterChange);
+            });
+
+            // Local Chart Filters
+            const selects = document.querySelectorAll('.filter-select');
+            selects.forEach(select => {
+                const type = select.id.split('-')[1]; 
+                
+                if (type === 'state') populateSelectOptions(select, uniqueStates, 'All States');
+                else if (type === 'school') populateSelectOptions(select, uniqueSchools, 'All Schools');
+                else if (type === 'form') populateSelectOptions(select, uniqueForms, 'All Forms');
+                else if (type === 'assessment') populateSelectOptions(select, uniqueAssessments, 'All Statuses');
+
+                select.removeEventListener('change', handleLocalFilterChange); 
+                select.addEventListener('change', handleLocalFilterChange);
+            });
+        }
+
+        function handleGlobalFilterChange(e) {
             const type = e.target.id.split('-')[1];
 
-            // Cascading Logic: Update the School dropdown based on selected State
+            // Cascade School dropdown on Global State change
             if (type === 'state') {
                 const selectedState = e.target.value;
-                const schoolSelect = document.getElementById(`chart${chartId}-school`);
+                const schoolSelect = document.getElementById('global-school');
                 const currentSchoolVal = schoolSelect.value;
                 
-                // Get schools belonging only to the selected state (or all if ALL is selected)
                 let availableSchools = [];
                 if (selectedState === 'ALL') {
                     availableSchools = uniqueSchools;
@@ -363,21 +435,34 @@
                     availableSchools = [...new Set(stateFilteredData.map(d => d.MRSM).filter(Boolean))].sort();
                 }
 
-                // Clear and rebuild school dropdown
-                schoolSelect.innerHTML = '';
-                const defaultOption = document.createElement('option');
-                defaultOption.value = 'ALL';
-                defaultOption.textContent = 'All Schools';
-                schoolSelect.appendChild(defaultOption);
+                populateSelectOptions(schoolSelect, availableSchools, 'All Schools (Global)');
+                if (availableSchools.includes(currentSchoolVal)) {
+                    schoolSelect.value = currentSchoolVal;
+                }
+            }
 
-                availableSchools.forEach(school => {
-                    const option = document.createElement('option');
-                    option.value = school;
-                    option.textContent = school;
-                    schoolSelect.appendChild(option);
-                });
+            renderAllCharts();
+        }
 
-                // Restore previous selection if it's still a valid school in this state
+        function handleLocalFilterChange(e) {
+            const chartId = e.target.getAttribute('data-chart');
+            const type = e.target.id.split('-')[1];
+
+            // Cascading Logic: Update the local School dropdown based on local State selection
+            if (type === 'state') {
+                const selectedState = e.target.value;
+                const schoolSelect = document.getElementById(`chart${chartId}-school`);
+                const currentSchoolVal = schoolSelect.value;
+                
+                let availableSchools = [];
+                if (selectedState === 'ALL') {
+                    availableSchools = uniqueSchools;
+                } else {
+                    const stateFilteredData = globalData.filter(row => row.State === selectedState);
+                    availableSchools = [...new Set(stateFilteredData.map(d => d.MRSM).filter(Boolean))].sort();
+                }
+
+                populateSelectOptions(schoolSelect, availableSchools, 'All Schools');
                 if (availableSchools.includes(currentSchoolVal)) {
                     schoolSelect.value = currentSchoolVal;
                 }
@@ -387,16 +472,28 @@
         }
 
         function getFilteredData(chartId) {
-            const stateVal = document.getElementById(`chart${chartId}-state`).value;
-            const schoolVal = document.getElementById(`chart${chartId}-school`).value;
-            const formVal = document.getElementById(`chart${chartId}-form`).value;
+            // Global values
+            const gState = document.getElementById('global-state')?.value || 'ALL';
+            const gSchool = document.getElementById('global-school')?.value || 'ALL';
+            const gForm = document.getElementById('global-form')?.value || 'ALL';
+
+            // Local values
+            const lState = document.getElementById(`chart${chartId}-state`)?.value || 'ALL';
+            const lSchool = document.getElementById(`chart${chartId}-school`)?.value || 'ALL';
+            const lForm = document.getElementById(`chart${chartId}-form`)?.value || 'ALL';
+            const lAssessment = document.getElementById(`chart${chartId}-assessment`)?.value || 'ALL';
 
             return globalData.filter(row => {
-                const matchState = stateVal === 'ALL' || row.State === stateVal;
-                const matchSchool = schoolVal === 'ALL' || row.MRSM === schoolVal;
-                const matchForm = formVal === 'ALL' || String(row.Form) === formVal;
+                const matchGlobal = (gState === 'ALL' || row.State === gState) &&
+                                    (gSchool === 'ALL' || row.MRSM === gSchool) &&
+                                    (gForm === 'ALL' || String(row.Form) === gForm);
                 
-                return matchState && matchSchool && matchForm;
+                const matchLocal = (lState === 'ALL' || row.State === lState) &&
+                                   (lSchool === 'ALL' || row.MRSM === lSchool) &&
+                                   (lForm === 'ALL' || String(row.Form) === lForm) &&
+                                   (lAssessment === 'ALL' || (row.Assessment || 'Unknown') === lAssessment);
+                
+                return matchGlobal && matchLocal;
             });
         }
 
@@ -473,30 +570,121 @@
 
         function renderChart3(ctx, data, id) {
             const agg = aggregateCount(data, 'Assessment');
+            const isPercentage = chartMetrics[id] === 'percentage';
+            const total = data.length;
+            
+            const renderValues = isPercentage ? 
+                agg.values.map(val => total > 0 ? Number(((val / total) * 100).toFixed(1)) : 0) : 
+                agg.values;
+
+            // Update Title
+            document.getElementById('chart3-title').textContent = isPercentage ? 'Assessment Progress (%)' : 'Assessment Progress (Count)';
+
             chartInstances[id] = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: agg.labels,
                     datasets: [{
-                        label: 'Students',
-                        data: agg.values,
+                        label: isPercentage ? 'Students (%)' : 'Students',
+                        data: renderValues,
                         backgroundColor: colors[1],
                         borderColor: borderColors[1],
                         borderWidth: 1,
                         borderRadius: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return isPercentage ? context.raw + '%' : context.raw;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            max: isPercentage ? 100 : undefined,
+                            ticks: {
+                                callback: function(value) {
+                                    return isPercentage ? value + '%' : value;
+                                }
+                            }
+                        }
+                    }
+                }
             });
         }
 
         function renderChart4(ctx, data, id) {
-            const schools = [...new Set(data.map(d => d.MRSM || 'Unknown'))].sort();
-            const allAssessments = [...new Set(globalData.map(d => d.Assessment || 'Unknown'))].sort();
+            const isPercentage = chartMetrics[id] === 'percentage';
+            document.getElementById('chart4-title').textContent = isPercentage ? 'Assessment Status by School (%)' : 'Assessment Status by School (Count)';
+
+            // 1. Calculate the base population for each school matching BOTH global and local filter criteria (excluding assessment)
+            const gState = document.getElementById('global-state')?.value || 'ALL';
+            const gSchool = document.getElementById('global-school')?.value || 'ALL';
+            const gForm = document.getElementById('global-form')?.value || 'ALL';
             
+            const lState = document.getElementById(`chart${id}-state`)?.value || 'ALL';
+            const lSchool = document.getElementById(`chart${id}-school`)?.value || 'ALL';
+            const lForm = document.getElementById(`chart${id}-form`)?.value || 'ALL';
+            
+            const baseData = globalData.filter(row => {
+                const matchGlobal = (gState === 'ALL' || row.State === gState) &&
+                                    (gSchool === 'ALL' || row.MRSM === gSchool) &&
+                                    (gForm === 'ALL' || String(row.Form) === gForm);
+                const matchLocal =  (lState === 'ALL' || row.State === lState) &&
+                                    (lSchool === 'ALL' || row.MRSM === lSchool) &&
+                                    (lForm === 'ALL' || String(row.Form) === lForm);
+                return matchGlobal && matchLocal;
+            });
+
+            const schoolBaseTotals = {};
+            baseData.forEach(d => {
+                const school = d.MRSM || 'Unknown';
+                schoolBaseTotals[school] = (schoolBaseTotals[school] || 0) + 1;
+            });
+
+            // 2. Count the specifically matched students (including the assessment filter)
+            const schoolFilteredTotals = {};
+            data.forEach(d => {
+                const school = d.MRSM || 'Unknown';
+                schoolFilteredTotals[school] = (schoolFilteredTotals[school] || 0) + 1;
+            });
+
+            // 3. Calculate percentage for sorting
+            const schoolPercentages = {};
+            Object.keys(schoolBaseTotals).forEach(school => {
+                const filteredCount = schoolFilteredTotals[school] || 0;
+                const totalCount = schoolBaseTotals[school];
+                schoolPercentages[school] = totalCount > 0 ? (filteredCount / totalCount) * 100 : 0;
+            });
+
+            // 4. Sort based on active metric
+            let schools = Object.keys(schoolBaseTotals).sort((a, b) => {
+                if (isPercentage) return schoolPercentages[b] - schoolPercentages[a];
+                return (schoolFilteredTotals[b] || 0) - (schoolFilteredTotals[a] || 0);
+            });
+
+            // Slice top 5 if button active
+            if (isChart4Top5) {
+                schools = schools.slice(0, 5);
+            }
+
+            // Build datasets
+            const allAssessments = [...new Set(globalData.map(d => d.Assessment || 'Unknown'))].sort();
             const datasets = allAssessments.map((assessment, index) => {
                 const values = schools.map(school => {
-                    return data.filter(d => (d.MRSM || 'Unknown') === school && (d.Assessment || 'Unknown') === assessment).length;
+                    const count = data.filter(d => (d.MRSM || 'Unknown') === school && (d.Assessment || 'Unknown') === assessment).length;
+                    if (isPercentage) {
+                        const total = schoolBaseTotals[school] || 1; // avoid division by zero
+                        return Number(((count / total) * 100).toFixed(1)); 
+                    }
+                    return count;
                 });
                 return {
                     label: assessment,
@@ -505,13 +693,41 @@
                 };
             });
 
+            // If a specific assessment filter is active, only render that dataset
+            const selectedAssessment = document.getElementById('chart4-assessment')?.value;
+            const activeDatasets = (selectedAssessment && selectedAssessment !== 'ALL')
+                ? datasets.filter(ds => ds.label === selectedAssessment)
+                : datasets;
+
             chartInstances[id] = new Chart(ctx, {
                 type: 'bar',
-                data: { labels: schools, datasets: datasets },
+                data: { labels: schools, datasets: activeDatasets },
                 options: { 
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { x: { stacked: true }, y: { stacked: true } },
-                    plugins: { legend: { position: 'bottom' } }
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        x: { stacked: true }, 
+                        y: { 
+                            stacked: true,
+                            max: isPercentage ? 100 : undefined, 
+                            ticks: {
+                                callback: function(value) {
+                                    return isPercentage ? value + '%' : value;
+                                }
+                            }
+                        } 
+                    },
+                    plugins: { 
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = isPercentage ? context.raw + '%' : context.raw;
+                                    return context.dataset.label + ': ' + value;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
